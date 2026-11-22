@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Downloads — Movie Star Pro</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=4" />
+  <style>
+    .dl-page-head { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px; border-bottom: 1px solid var(--border); }
+    .dl-container { max-width: 900px; margin: 0 auto; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+    .dl-item {
+      display: flex; align-items: center; gap: 12px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 10px;
+    }
+    .dl-item input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+    .dl-item img { width: 58px; height: 84px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+    .dl-meta { flex: 1; min-width: 0; }
+    .dl-meta h4 { font-size: 14px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dl-sub { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+    .mini-bar { width: 100%; height: 5px; background: #1e2336; border-radius: 10px; margin-top: 7px; overflow: hidden; }
+    .mini-fill { height: 100%; background: #22c55e; }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a href="index.html" class="brand">MOVIE STAR <span class="brand-pill">PRO</span></a>
+    <div class="top-actions">
+      <a href="index.html" class="nav-pill"><i class="ri-home-5-line"></i> Home</a>
+      <a href="search.html" class="nav-pill"><i class="ri-search-line"></i> Search</a>
+    </div>
+  </header>
+
+  <main class="page-wrap">
+    <div class="dl-page-head">
+      <div class="rail-title"><i class="ri-download-cloud-2-fill"></i> My Downloads</div>
+      <div style="display:flex;gap:8px;">
+        <button class="c-pill" onclick="toggleSelectAll()"><i class="ri-checkbox-multiple-line"></i> Select All</button>
+        <button class="c-pill active" onclick="deleteSelected()"><i class="ri-delete-bin-6-line"></i> Delete</button>
+      </div>
+    </div>
+
+    <div class="dl-container" id="dlList"></div>
+  </main>
+
+
+
+<nav class="bottom-nav" style="padding: 0 4px;">
+    <a href="index.html" class="bnav-item" style="padding: 6px 4px; flex: 1;">
+      <i class="ri-home-5-line"></i><span>Home</span>
+    </a>
+    <a href="cricket.html" class="bnav-item" style="padding: 6px 4px; flex: 1;">
+      <i class="ri-trophy-line"></i><span>Cricket</span>
+    </a>
+    <a href="search.html" class="bnav-item" style="padding: 6px 4px; flex: 1;">
+      <i class="ri-search-2-line"></i><span>Search</span>
+    </a>
+    <a href="downloads.html" class="bnav-item active" style="padding: 6px 4px; flex: 1;">
+      <i class="ri-download-2-fill"></i><span>Downloads</span>
+    </a>
+    <a href="search.html?cat=hindi_adult" class="bnav-item" style="padding: 6px 4px; flex: 1;">
+      <i class="ri-fire-line"></i><span>18+ Bold</span>
+    </a>
+  </nav>
+
+
+
+  <script src="config.js?v=4"></script>
+  <script>
+    function renderDownloads() {
+      const list = Store.getDownloads();
+      const box = document.getElementById("dlList");
+      if (!list.length) {
+        box.innerHTML = `<div class="sentinel-box"><i class="ri-folder-download-line" style="font-size:36px;display:block;margin-bottom:8px;"></i>Abhi koi download nahi hai. Kisi bhi movie ke Download button par click karein!</div>`;
+        return;
+      }
+      box.innerHTML = list.map(d => `
+        <div class="dl-item">
+          <input type="checkbox" class="dl-chk" value="${d.uid}" />
+          <img src="${d.poster_path ? CONFIG.IMG_POSTER + d.poster_path : "https://via.placeholder.com/100x150"}" onclick="goToWatch('${d.type}','${d.id}')" style="cursor:pointer;" />
+          <div class="dl-meta" onclick="goToWatch('${d.type}','${d.id}')" style="cursor:pointer;">
+            <h4>${esc(d.title)}</h4>
+            <div class="dl-sub">${d.quality} • ${d.size} • <span style="color:${d.progress >= 100 ? "#22c55e" : "#fbbf24"};">${d.progress >= 100 ? "Completed" : d.progress + "% Downloading"}</span></div>
+            <div class="mini-bar"><div class="mini-fill" style="width:${d.progress}%"></div></div>
+          </div>
+          <button class="icon-circle" onclick="deleteOne('${d.uid}')" title="Delete"><i class="ri-delete-bin-line"></i></button>
+        </div>
+      `).join("");
+    }
+
+    function deleteOne(uid) {
+      Store.deleteDownloads([uid]);
+      renderDownloads();
+    }
+
+    function toggleSelectAll() {
+      const chks = document.querySelectorAll(".dl-chk");
+      const allChecked = Array.from(chks).every(c => c.checked);
+      chks.forEach(c => c.checked = !allChecked);
+    }
+
+    function deleteSelected() {
+      const selected = Array.from(document.querySelectorAll(".dl-chk:checked")).map(c => c.value);
+      if (!selected.length) { alert("Delete karne ke liye pehle koi item select karein."); return; }
+      Store.deleteDownloads(selected);
+      renderDownloads();
+    }
+
+    renderDownloads();
+  </script>
+</body>
+</html>

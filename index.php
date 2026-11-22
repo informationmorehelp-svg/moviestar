@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Movie Star Pro — Hindi Movies, Cricket & Series</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=6" />
+</head>
+<body>
+
+  <header class="topbar">
+    <a href="index.html" class="brand">MOVIE STAR <span class="brand-pill">PRO</span></a>
+    <nav class="desk-nav">
+      <a href="index.html" class="active">Home</a>
+      <a href="cricket.html" style="color:#f87171;">Live Cricket</a>
+      <a href="search.html?cat=hindi_trending">Hindi</a>
+      <a href="search.html?cat=upcoming">Upcoming</a>
+      <a href="search.html?cat=hindi_series">Series</a>
+      <a href="search.html?cat=hindi_adult">18+ Hindi</a>
+      <a href="search.html?cat=cartoon">Cartoon</a>
+    </nav>
+    <div class="top-actions">
+      <a href="search.html" class="nav-pill"><i class="ri-search-line"></i> Search</a>
+      <a href="downloads.html" class="nav-pill"><i class="ri-download-2-line"></i> Downloads</a>
+    </div>
+  </header>
+
+  <section class="hero-slider" id="heroSlider">
+    <div id="heroSlidesWrap"></div>
+    <button class="hero-nav-arrow hero-prev" onclick="moveSlide(-1)" aria-label="Previous"><i class="ri-arrow-left-s-line"></i></button>
+    <button class="hero-nav-arrow hero-next" onclick="moveSlide(1)" aria-label="Next"><i class="ri-arrow-right-s-line"></i></button>
+    <div class="hero-dots" id="heroDots"></div>
+  </section>
+
+  <div class="sticky-strip" id="stickyStrip"></div>
+
+  <main class="page-wrap">
+    <section class="rail-section" id="continueSection" style="display:none;">
+      <div class="rail-head">
+        <div class="rail-title"><i class="ri-history-line"></i> Continue Watching</div>
+        <button class="rail-more" style="border:none;cursor:pointer;" onclick="localStorage.removeItem('ms_history');renderUserRails();">Clear</button>
+      </div>
+      <div class="rail-wrap">
+        <div class="rail-track" id="continueTrack"></div>
+      </div>
+    </section>
+
+    <section class="rail-section" id="watchlistSection" style="display:none;">
+      <div class="rail-head">
+        <div class="rail-title"><i class="ri-heart-3-fill"></i> My Watchlist</div>
+      </div>
+      <div class="rail-wrap">
+        <div class="rail-track" id="watchlistTrack"></div>
+      </div>
+    </section>
+
+    <div id="railsContainer"></div>
+    <div id="homeSentinel" class="sentinel-box"><i class="ri-loader-4-line"></i> Loading more categories...</div>
+  </main>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="bnav-item active"><i class="ri-home-5-fill"></i><span>Home</span></a>
+    <a href="cricket.html" class="bnav-item"><i class="ri-trophy-line"></i><span>Cricket</span></a>
+    <a href="search.html" class="bnav-item"><i class="ri-search-2-line"></i><span>Search</span></a>
+    <a href="downloads.html" class="bnav-item"><i class="ri-download-2-line"></i><span>Downloads</span></a>
+    <a href="search.html?cat=upcoming" class="bnav-item"><i class="ri-calendar-event-line"></i><span>Upcoming</span></a>
+  </nav>
+
+  <script src="config.js?v=6"></script>
+  <script>
+    let heroData = [], heroIdx = 0, heroInterval = null;
+    let loadedRailIndex = 0;
+    const RAILS_PER_BATCH = 4;
+
+    // Sticky Quick Strip (Live Cricket chip sabse pehle)
+    document.getElementById("stickyStrip").innerHTML =
+      `<a href="cricket.html" class="strip-chip active"><i class="ri-trophy-fill"></i> Live Cricket</a>` +
+      CATEGORIES.slice(0, 12).map(c => `
+        <a href="search.html?cat=${c.id}" class="strip-chip ${c.adult ? "adult-chip" : ""}">
+          <i class="${c.icon}"></i> ${c.title}
+        </a>
+      `).join("");
+
+    async function loadHero() {
+      try {
+        const [hi, tr] = await Promise.all([
+          fetch(`https://api.themoviedb.org/3/discover/movie?api_key=${CONFIG.API_KEY}&with_original_language=hi&sort_by=popularity.desc&page=1`).then(r => r.json()),
+          fetch(`https://api.themoviedb.org/3/trending/all/day?api_key=${CONFIG.API_KEY}`).then(r => r.json())
+        ]);
+        const hiTop = (hi.results || []).filter(m => m.backdrop_path).slice(0, 4).map(m => ({ ...m, _type: "movie", _tag: "HINDI TRENDING" }));
+        const trTop = (tr.results || []).filter(m => m.media_type !== "person" && m.backdrop_path).slice(0, 3).map(m => ({ ...m, _type: m.media_type || "movie", _tag: "GLOBAL HIT" }));
+        heroData = [...hiTop, ...trTop];
+
+        document.getElementById("heroSlidesWrap").innerHTML = heroData.map((m, i) => `
+          <div class="hero-slide ${i === 0 ? "active" : ""}" style="background-image:url('${CONFIG.IMG_BACKDROP + m.backdrop_path}')">
+            <div class="hero-content">
+              <div class="hero-badges">
+                <span class="h-tag">#${i + 1} ${m._tag}</span>
+                <span class="h-pill"><i class="ri-star-fill" style="color:#fbbf24;"></i> ${m.vote_average ? m.vote_average.toFixed(1) : "—"}</span>
+                <span class="h-pill">${(m.release_date || m.first_air_date || "").split("-")[0]}</span>
+              </div>
+              <div class="hero-title">${esc(m.title || m.name)}</div>
+              <div class="hero-desc">${esc(m.overview)}</div>
+              <div class="hero-btns">
+                <button class="btn-watch" onclick="goToWatch('${m._type}','${m.id}')"><i class="ri-play-fill"></i> Watch Now</button>
+                <button class="btn-glass" onclick="toggleHeroSave(${i}, this)"><i class="ri-bookmark-${Store.isSaved(m._type, m.id) ? "fill" : "line"}"></i> ${Store.isSaved(m._type, m.id) ? "Saved" : "Watchlist"}</button>
+              </div>
+            </div>
+          </div>
+        `).join("");
+
+        document.getElementById("heroDots").innerHTML = heroData.map((_, i) => `<div class="hero-dot ${i === 0 ? "active" : ""}" onclick="goSlide(${i})"></div>`).join("");
+        startAutoSlide();
+      } catch (e) {}
+    }
+
+    function startAutoSlide() { clearInterval(heroInterval); heroInterval = setInterval(() => moveSlide(1), 4500); }
+    function moveSlide(dir) { if (!heroData.length) return; goSlide((heroIdx + dir + heroData.length) % heroData.length); }
+    function goSlide(idx) {
+      heroIdx = idx;
+      document.querySelectorAll(".hero-slide").forEach((el, i) => el.classList.toggle("active", i === idx));
+      document.querySelectorAll(".hero-dot").forEach((el, i) => el.classList.toggle("active", i === idx));
+      startAutoSlide();
+    }
+
+    const sliderEl = document.getElementById("heroSlider");
+    sliderEl.addEventListener("mouseenter", () => clearInterval(heroInterval));
+    sliderEl.addEventListener("mouseleave", startAutoSlide);
+
+    function toggleHeroSave(i, btn) {
+      const m = heroData[i];
+      const s = Store.toggleWatchlist({ id: m.id, type: m._type, title: m.title || m.name, poster_path: m.poster_path, release_date: m.release_date || m.first_air_date, vote_average: m.vote_average, original_language: m.original_language });
+      btn.innerHTML = `<i class="ri-bookmark-${s ? "fill" : "line"}"></i> ${s ? "Saved" : "Watchlist"}`;
+      renderUserRails();
+    }
+
+    function renderUserRails() {
+      const hist = Store.getHistory();
+      document.getElementById("continueSection").style.display = hist.length ? "block" : "none";
+      if (hist.length) document.getElementById("continueTrack").innerHTML = hist.map(x => makeCardHTML(x, x.type)).join("");
+
+      const wl = Store.getWatchlist();
+      document.getElementById("watchlistSection").style.display = wl.length ? "block" : "none";
+      if (wl.length) document.getElementById("watchlistTrack").innerHTML = wl.map(x => makeCardHTML(x, x.type)).join("");
+    }
+
+    function loadNextRailBatch() {
+      if (loadedRailIndex >= CATEGORIES.length) { document.getElementById("homeSentinel").style.display = "none"; return; }
+      const batch = CATEGORIES.slice(loadedRailIndex, loadedRailIndex + RAILS_PER_BATCH);
+      loadedRailIndex += batch.length;
+      const container = document.getElementById("railsContainer");
+
+      batch.forEach(cat => {
+        container.insertAdjacentHTML("beforeend", `
+          <section class="rail-section" id="rail_${cat.id}">
+            <div class="rail-head">
+              <div class="rail-title"><i class="${cat.icon}"></i> ${cat.title}</div>
+              <a href="search.html?cat=${cat.id}" class="rail-more">See All <i class="ri-arrow-right-s-line"></i></a>
+            </div>
+            <div class="rail-wrap">
+              <button class="rail-arrow left" onclick="document.getElementById('track_${cat.id}').scrollBy({left:-480,behavior:'smooth'})"><i class="ri-arrow-left-s-line"></i></button>
+              <div class="rail-track" id="track_${cat.id}"><div style="padding:20px;color:#64748b;">Loading...</div></div>
+              <button class="rail-arrow right" onclick="document.getElementById('track_${cat.id}').scrollBy({left:480,behavior:'smooth'})"><i class="ri-arrow-right-s-line"></i></button>
+            </div>
+          </section>`);
+
+        fetchCategoryItems(cat, 1).then(({ results }) => {
+          document.getElementById(`track_${cat.id}`).innerHTML = results.slice(0, 18).map(it => makeCardHTML(it, cat.type, !!cat.adult)).join("");
+        }).catch(() => {});
+      });
+    }
+
+    new IntersectionObserver(entries => { if (entries[0].isIntersecting) loadNextRailBatch(); }, { rootMargin: "300px" }).observe(document.getElementById("homeSentinel"));
+
+    loadHero();
+    renderUserRails();
+    loadNextRailBatch();
+  </script>
+</body>
+</html>

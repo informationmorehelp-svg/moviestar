@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Watch — Movie Star Pro</title>
+  <meta property="og:title" id="ogTitle" content="Movie Star Pro" />
+  <meta property="og:description" id="ogDesc" content="Watch HD Hindi Movies & Series" />
+  <meta property="og:image" id="ogImage" content="" />
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=6" />
+  <style>
+    .watch-banner {
+      position: relative; width: 100%; min-height: 150px; background-size: cover; background-position: center;
+      border-radius: 14px; overflow: hidden; display: flex; align-items: flex-end; padding: 18px;
+      border: 1px solid var(--border); margin-bottom: 10px;
+    }
+    .watch-banner::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(to right, rgba(6,7,11,0.95) 20%, rgba(6,7,11,0.55) 100%);
+    }
+    .wb-inner { position: relative; z-index: 2; display: flex; gap: 14px; align-items: center; width: 100%; }
+    .wb-poster { width: 78px; height: 114px; border-radius: 9px; object-fit: cover; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0; }
+    .dl-msg-box { background: #0d0f17; border: 1px solid #252b42; border-radius: 10px; padding: 12px; margin-top: 12px; display: none; font-size: 12.5px; color: #cbd5e1; }
+
+    /* Mobile Landscape Auto-Fullscreen Mode */
+    @media (orientation: landscape) and (max-height: 520px) {
+      body { padding-bottom: 0 !important; overflow: hidden !important; }
+      .topbar, .control-deck, .ep-section, .details-wrap { display: none !important; }
+      .watch-shell { max-width: 100% !important; margin: 0 !important; }
+      .player-container {
+        position: fixed !important; inset: 0 !important;
+        width: 100vw !important; height: 100vh !important;
+        aspect-ratio: auto !important; z-index: 999 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a href="index.html" class="brand">MOVIE STAR <span class="brand-pill">PRO</span></a>
+    <div class="top-actions">
+      <button class="nav-pill" onclick="history.back()"><i class="ri-arrow-left-line"></i> Back</button>
+      <a href="cricket.html" class="nav-pill"><i class="ri-trophy-line"></i> Cricket</a>
+      <a href="downloads.html" class="nav-pill"><i class="ri-download-2-line"></i> Downloads</a>
+    </div>
+  </header>
+
+  <div class="watch-shell" id="watchShell">
+    <div class="player-container" id="playerContainer">
+      <div class="touch-lock-overlay" id="touchLockOverlay">
+        <button class="unlock-pill" onclick="toggleLock()"><i class="ri-lock-unlock-line"></i> Unlock</button>
+      </div>
+      <div class="castle-hud" id="castleHud">
+        <div class="hud-top">
+          <button class="hud-icon" onclick="history.back()"><i class="ri-arrow-left-line"></i></button>
+          <span class="hud-title" id="hudTitle">Loading...</span>
+          <div style="display:flex;gap:7px;">
+            <button class="hud-icon" id="hudDlBtn" onclick="openDownloadModal()" title="Download"><i class="ri-download-2-line"></i></button>
+            <button class="hud-icon" onclick="toggleLock()" title="Lock Screen"><i class="ri-lock-line"></i></button>
+          </div>
+        </div>
+        <div class="hud-bottom">
+          <div class="hud-slider" title="Brightness"><i class="ri-sun-line"></i><input type="range" id="brightSlider" min="30" max="160" value="100" oninput="updateVisuals()" /></div>
+          <div class="hud-slider" title="Contrast"><i class="ri-contrast-2-line"></i><input type="range" id="contrastSlider" min="70" max="150" value="100" oninput="updateVisuals()" /></div>
+          <div style="display:flex;gap:7px;">
+            <button class="hud-icon" onclick="cycleZoom()" title="Zoom"><i class="ri-aspect-ratio-line"></i></button>
+            <button class="hud-icon" onclick="toggleFullscreen()" title="Rotate & Fullscreen"><i class="ri-fullscreen-line"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="player-inner" id="playerInner"></div>
+    </div>
+
+    <div class="control-deck">
+      <div class="deck-row">
+        <span class="deck-label">Stream:</span>
+        <div class="deck-row" id="serverRow"></div>
+      </div>
+      <div class="deck-row">
+        <span class="deck-label">Tools:</span>
+        <button class="c-pill blue-active" id="shieldBtn" onclick="toggleAdShield()"><i class="ri-shield-check-fill"></i> Ad-Block: ON</button>
+        <button class="c-pill active" id="mainDlBtn" onclick="openDownloadModal()"><i class="ri-download-cloud-2-line"></i> Download</button>
+        <button class="c-pill" onclick="toggleFullscreen()"><i class="ri-fullscreen-line"></i> Fullscreen</button>
+        <button class="c-pill" id="zoomBtn" onclick="cycleZoom()"><i class="ri-aspect-ratio-line"></i> Fit: Normal</button>
+        <button class="c-pill" id="lightsBtn" onclick="toggleLights()"><i class="ri-moon-line"></i> Lights Off</button>
+        <button class="c-pill" id="wlBtn" onclick="toggleSave()"><i class="ri-heart-line"></i> Watchlist</button>
+        <button class="c-pill" onclick="shareMovie()"><i class="ri-share-forward-line"></i> Share</button>
+      </div>
+    </div>
+
+    <section class="ep-section" id="epSection" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="rail-title"><i class="ri-play-list-2-fill"></i> Seasons & Episodes</div>
+        <div style="display:flex;gap:7px;">
+          <button class="c-pill" onclick="stepEpisode(-1)"><i class="ri-skip-back-fill"></i> Prev</button>
+          <button class="c-pill active" onclick="stepEpisode(1)">Next <i class="ri-skip-forward-fill"></i></button>
+        </div>
+      </div>
+      <div class="season-tabs" id="seasonTabs"></div>
+      <div class="ep-grid" id="epGrid"></div>
+    </section>
+
+    <div class="details-wrap">
+      <div class="watch-banner" id="watchBanner">
+        <div class="wb-inner">
+          <img class="wb-poster" id="wbPoster" src="" alt="Poster" />
+          <div>
+            <span class="h-tag" id="upcomingTag" style="display:none;margin-bottom:6px;">UPCOMING — TRAILER ONLY</span>
+            <h1 class="watch-h1" id="mTitle">Loading...</h1>
+            <div class="meta-chips" id="mMeta"></div>
+          </div>
+        </div>
+      </div>
+      <p class="overview-p" id="mOverview" style="margin-top:0;"></p>
+
+      <section id="castSec" style="display:none;">
+        <div class="rail-title" style="margin-bottom:12px;"><i class="ri-group-fill"></i> Top Cast</div>
+        <div class="cast-strip" id="castStrip"></div>
+      </section>
+
+      <section id="recSec" style="display:none;">
+        <div class="rail-title" style="margin-bottom:12px;"><i class="ri-movie-2-fill"></i> Recommended For You</div>
+        <div class="m-grid" id="recGrid" style="padding:0;"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="app-modal" id="dlModal">
+    <div class="app-modal-box" style="max-width:400px;">
+      <div class="modal-head">
+        <h3><i class="ri-download-cloud-2-fill" style="color:#e50914;"></i> Download File</h3>
+        <button class="icon-circle" onclick="closeDlModal()"><i class="ri-close-line"></i></button>
+      </div>
+      <div class="dl-list">
+        <button class="dl-btn" onclick="handleRealDownload('480p', '350 MB')"><span><i class="ri-sd-card-line"></i> 480p Fast (Hindi/Dual)</span><span>350 MB</span></button>
+        <button class="dl-btn" onclick="handleRealDownload('720p', '850 MB')"><span><i class="ri-hd-line"></i> 720p HD Quality</span><span>850 MB</span></button>
+        <button class="dl-btn" onclick="handleRealDownload('1080p', '1.6 GB')"><span><i class="ri-4k-line"></i> 1080p Full HD</span><span>1.6 GB</span></button>
+      </div>
+      <div class="dl-msg-box" id="dlMsgBox"></div>
+    </div>
+  </div>
+
+  <script src="config.js?v=6"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const mediaType = params.get("type") === "tv" ? "tv" : "movie";
+    const mediaId = params.get("id");
+    if (!mediaId) location.href = "index.html";
+
+    let details = null, isUpcoming = false, activeServerId = SERVERS[0].id, trailerKey = null;
+    let currentSeason = 1, currentEpisode = 1, currentSeasonEpisodes = [], zoomState = 0, hudTimer;
+    let adShieldOn = true;
+
+    const pBox = document.getElementById("playerContainer"), hud = document.getElementById("castleHud");
+    function showHud() { hud.classList.add("visible"); clearTimeout(hudTimer); hudTimer = setTimeout(() => hud.classList.remove("visible"), 3000); }
+    pBox.addEventListener("mousemove", showHud); pBox.addEventListener("touchstart", showHud); pBox.addEventListener("click", showHud);
+
+    // Auto-Rotate Landscape + Fullscreen
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+          if (pBox.requestFullscreen) await pBox.requestFullscreen();
+          else if (pBox.webkitRequestFullscreen) await pBox.webkitRequestFullscreen();
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock("landscape").catch(() => {});
+          }
+        } else {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) await document.webkitExitFullscreen();
+          if (screen.orientation && screen.orientation.unlock) {
+            screen.orientation.unlock();
+          }
+        }
+      } catch (e) {}
+    }
+
+    function toggleAdShield() {
+      adShieldOn = !adShieldOn;
+      const btn = document.getElementById("shieldBtn");
+      btn.classList.toggle("blue-active", adShieldOn);
+      btn.innerHTML = adShieldOn ? `<i class="ri-shield-check-fill"></i> Ad-Block: ON` : `<i class="ri-shield-line"></i> Ad-Block: OFF`;
+      loadFrame();
+    }
+
+    function renderServers() {
+      const row = document.getElementById("serverRow");
+      if (isUpcoming) {
+        row.innerHTML = `<button class="c-pill active" onclick="selectServer('trailer')"><i class="ri-youtube-fill"></i> Official Trailer</button>`;
+        document.getElementById("mainDlBtn").style.display = "none";
+        document.getElementById("hudDlBtn").style.display = "none";
+        return;
+      }
+      row.innerHTML =
+        `<button class="c-pill ${activeServerId === "trailer" ? "active" : ""}" onclick="selectServer('trailer')"><i class="ri-youtube-fill"></i> Trailer</button>` +
+        SERVERS.map(s => `<button class="c-pill ${s.id === activeServerId ? "active" : ""}" onclick="selectServer('${s.id}')">${s.name}</button>`).join("");
+    }
+
+    function selectServer(id) { activeServerId = id; renderServers(); loadFrame(); }
+
+    function loadFrame() {
+      const inner = document.getElementById("playerInner");
+      if (activeServerId === "trailer") {
+        inner.innerHTML = trailerKey
+          ? `<iframe src="https://www.youtube.com/embed/${trailerKey}?autoplay=1&rel=0" allowfullscreen allow="autoplay; fullscreen"></iframe>`
+          : `<div class="sentinel-box" style="padding-top:20%;">Official Trailer abhi available nahi hai.</div>`;
+        return;
+      }
+      const srv = SERVERS.find(s => s.id === activeServerId) || SERVERS[0];
+      const sb = adShieldOn ? `sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"` : "";
+      inner.innerHTML = `<iframe src="${srv.getUrl(mediaType, mediaId, currentSeason, currentEpisode)}" ${sb} allowfullscreen allow="autoplay; fullscreen; encrypted-media; picture-in-picture" referrerpolicy="origin"></iframe>`;
+    }
+
+    function openDownloadModal() { document.getElementById("dlModal").classList.add("open"); document.getElementById("dlMsgBox").style.display = "none"; }
+    function closeDlModal() { document.getElementById("dlModal").classList.remove("open"); }
+
+    function handleRealDownload(quality, size) {
+      if (!details) return;
+      const title = details.title || details.name;
+      const box = document.getElementById("dlMsgBox");
+      box.style.display = "block";
+
+      const directObj = DOWNLOAD_CONFIG.directLinks[String(details.id)];
+      const directUrl = directObj ? (directObj[quality] || Object.values(directObj)[0]) : null;
+      Store.addDownload({ id: details.id, type: mediaType, title, quality, size, poster_path: details.poster_path, progress: directUrl ? 100 : 0 });
+
+      if (directUrl) {
+        box.innerHTML = `<span style="color:#22c55e;font-weight:700;"><i class="ri-checkbox-circle-fill"></i> Direct file download shuru ho gayi hai!</span>`;
+        const a = document.createElement("a"); a.href = directUrl; a.download = `${title}-${quality}.mp4`;
+        document.body.appendChild(a); a.click(); a.remove();
+      } else {
+        const tgLink = `${DOWNLOAD_CONFIG.telegramBotUrl}?text=${encodeURIComponent(title + " " + quality)}`;
+        box.innerHTML = `
+          <div style="margin-bottom:8px;">Is movie ki direct <b>${quality} (${size})</b> file Telegram par ready hai:</div>
+          <a href="${tgLink}" target="_blank" class="btn-watch" style="width:100%;justify-content:center;font-size:13px;padding:9px;">
+            <i class="ri-telegram-fill"></i> Download ${quality} File on Telegram
+          </a>`;
+      }
+    }
+
+    function updateVisuals() { document.getElementById("playerInner").style.filter = `brightness(${document.getElementById("brightSlider").value}%) contrast(${document.getElementById("contrastSlider").value}%)`; }
+    function cycleZoom() {
+      zoomState = (zoomState + 1) % 3;
+      const inner = document.getElementById("playerInner"), btn = document.getElementById("zoomBtn");
+      inner.classList.remove("zoom-fill", "zoom-cinema");
+      if (zoomState === 1) { inner.classList.add("zoom-fill"); btn.innerHTML = `<i class="ri-aspect-ratio-line"></i> Fit: Zoom`; btn.classList.add("blue-active"); }
+      else if (zoomState === 2) { inner.classList.add("zoom-cinema"); btn.innerHTML = `<i class="ri-aspect-ratio-line"></i> Fit: Cinema`; btn.classList.add("blue-active"); }
+      else { btn.innerHTML = `<i class="ri-aspect-ratio-line"></i> Fit: Normal`; btn.classList.remove("blue-active"); }
+    }
+    function toggleLights() { document.getElementById("lightsBtn").classList.toggle("blue-active", document.body.classList.toggle("lights-off")); }
+    function toggleLock() { document.getElementById("touchLockOverlay").classList.toggle("locked"); }
+    function shareMovie() {
+      const title = details ? (details.title || details.name) : BRAND.name;
+      const text = `🎬 ${title}\n${(details && details.overview) ? details.overview.slice(0, 120) + "..." : ""}\n${location.href}`;
+      if (navigator.share) navigator.share({ title, text, url: location.href }).catch(() => {});
+      else { navigator.clipboard.writeText(text); alert("Link copy ho gaya!"); }
+    }
+
+    async function loadDetails() {
+      try {
+        details = await fetch(`https://api.themoviedb.org/3/${mediaType}/${mediaId}?api_key=${CONFIG.API_KEY}&append_to_response=videos,credits,recommendations,similar`).then(r => r.json());
+        const title = details.title || details.name || "Untitled";
+        const relDate = details.release_date || details.first_air_date || "";
+        isUpcoming = relDate && new Date(relDate) > new Date();
+
+        document.title = `${title} — ${BRAND.name}`;
+        document.getElementById("mTitle").textContent = title;
+        document.getElementById("hudTitle").textContent = title;
+        document.getElementById("mOverview").textContent = details.overview || "";
+        document.getElementById("wbPoster").src = details.poster_path ? CONFIG.IMG_POSTER + details.poster_path : "https://via.placeholder.com/150x220";
+        if (details.backdrop_path) document.getElementById("watchBanner").style.backgroundImage = `url('${CONFIG.IMG_BACKDROP + details.backdrop_path}')`;
+        if (isUpcoming) document.getElementById("upcomingTag").style.display = "inline-block";
+
+        const year = relDate.split("-")[0], genres = (details.genres || []).map(g => g.name).slice(0, 3).join(", ");
+        document.getElementById("mMeta").innerHTML = [`★ ${details.vote_average ? details.vote_average.toFixed(1) : "—"}`, year, genres].filter(Boolean).map(x => `<span class="meta-chip">${esc(x)}</span>`).join("");
+
+        const tr = ((details.videos && details.videos.results) || []).find(v => v.site === "YouTube" && (v.type === "Trailer" || v.type === "Teaser"));
+        if (tr) trailerKey = tr.key;
+
+        activeServerId = isUpcoming ? "trailer" : SERVERS[0].id;
+        renderServers(); loadFrame();
+
+        Store.addHistory({ id: details.id, type: mediaType, title, poster_path: details.poster_path, release_date: relDate, vote_average: details.vote_average, original_language: details.original_language });
+        syncWl();
+
+        if (mediaType === "tv" && details.seasons) {
+          const valid = details.seasons.filter(s => s.season_number > 0);
+          if (valid.length) {
+            document.getElementById("epSection").style.display = "block";
+            document.getElementById("seasonTabs").innerHTML = valid.map(s => `<button class="c-pill ${s.season_number === 1 ? "active" : ""}" onclick="loadSeason(${s.season_number}, this)">Season ${s.season_number}</button>`).join("");
+            loadSeason(valid[0].season_number);
+          }
+        }
+        const cast = (details.credits && details.credits.cast) ? details.credits.cast.slice(0, 12) : [];
+        if (cast.length) { document.getElementById("castSec").style.display = "block"; document.getElementById("castStrip").innerHTML = cast.map(c => `<div class="cast-item"><img src="${c.profile_path ? CONFIG.IMG_FACE + c.profile_path : "https://via.placeholder.com/100"}" /><div class="cn">${esc(c.name)}</div></div>`).join(""); }
+        const recs = ((details.recommendations && details.recommendations.results) || []).length ? details.recommendations.results : ((details.similar && details.similar.results) || []);
+        if (recs.length) { document.getElementById("recSec").style.display = "block"; document.getElementById("recGrid").innerHTML = recs.slice(0, 18).map(r => makeCardHTML(r, mediaType)).join(""); }
+      } catch (e) {}
+    }
+
+    async function loadSeason(sNum, btn) {
+      currentSeason = sNum;
+      if (btn) { document.querySelectorAll("#seasonTabs .c-pill").forEach(b => b.classList.remove("active")); btn.classList.add("active"); }
+      const d = await fetch(`https://api.themoviedb.org/3/tv/${mediaId}/season/${sNum}?api_key=${CONFIG.API_KEY}`).then(r => r.json());
+      currentSeasonEpisodes = d.episodes || []; renderEps();
+    }
+    function renderEps() {
+      document.getElementById("epGrid").innerHTML = currentSeasonEpisodes.map(ep => `
+        <div class="ep-card ${ep.episode_number === currentEpisode ? "playing" : ""}" onclick="playEp(${ep.episode_number})">
+          <img src="${ep.still_path ? CONFIG.IMG_STILL + ep.still_path : "https://via.placeholder.com/240x135"}" />
+          <div><div class="ep-num">S${currentSeason} • EP ${ep.episode_number}</div><div class="ep-name">${esc(ep.name || "Episode " + ep.episode_number)}</div></div>
+        </div>`).join("");
+    }
+    function playEp(n) { currentEpisode = n; renderEps(); loadFrame(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    function stepEpisode(dir) { const t = currentEpisode + dir; if (t >= 1 && t <= currentSeasonEpisodes.length) playEp(t); }
+    function syncWl() { const s = Store.isSaved(mediaType, mediaId); const b = document.getElementById("wlBtn"); b.innerHTML = `<i class="ri-heart-${s ? "fill" : "line"}"></i> ${s ? "Saved" : "Watchlist"}`; b.classList.toggle("active", s); }
+    function toggleSave() { if (!details) return; Store.toggleWatchlist({ id: details.id, type: mediaType, title: details.title || details.name, poster_path: details.poster_path, release_date: details.release_date || details.first_air_date, vote_average: details.vote_average, original_language: details.original_language }); syncWl(); }
+
+    loadDetails();
+  </script>
+</body>
+</html>

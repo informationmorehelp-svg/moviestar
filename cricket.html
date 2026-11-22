@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Live Cricket — Movie Star Pro</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=5" />
+  <style>
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #ef4444; display: inline-block; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(1.3); } }
+    .cric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; padding: 0 16px 24px; }
+    .cric-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px;
+      cursor: pointer; transition: 0.2s; display: flex; flex-direction: column; gap: 8px;
+    }
+    .cric-card:hover, .cric-card.active { border-color: var(--accent); background: #1a1520; }
+    .cric-badge { font-size: 10px; font-weight: 800; color: #f87171; display: inline-flex; align-items: center; gap: 6px; }
+  </style>
+</head>
+<body>
+
+  <header class="topbar">
+    <a href="index.html" class="brand">MOVIE STAR <span class="brand-pill">PRO</span></a>
+    <nav class="desk-nav">
+      <a href="index.html">Home</a>
+      <a href="cricket.html" class="active"><span class="live-dot"></span> Live Cricket</a>
+      <a href="search.html?cat=hindi_trending">Hindi</a>
+      <a href="search.html?cat=upcoming">Upcoming</a>
+    </nav>
+    <div class="top-actions">
+      <a href="search.html" class="nav-pill"><i class="ri-search-line"></i> Search</a>
+      <a href="downloads.html" class="nav-pill"><i class="ri-download-2-line"></i> Downloads</a>
+    </div>
+  </header>
+
+  <div class="watch-shell">
+    <!-- Live Cricket Player (With Ad-Shield Sandbox) -->
+    <div class="player-container">
+      <div class="player-inner" id="cricPlayer"></div>
+    </div>
+
+    <div class="control-deck">
+      <div class="deck-row">
+        <span class="deck-label">Live TV:</span>
+        <div class="deck-row" id="cricChannelsRow"></div>
+      </div>
+      <div class="deck-row">
+        <span class="deck-label">Shield:</span>
+        <button class="c-pill blue-active" id="cricShieldBtn" onclick="toggleCricShield()">
+          <i class="ri-shield-check-fill"></i> Ad-Block Shield: ON
+        </button>
+      </div>
+    </div>
+
+    <!-- Latest Cricket Highlights -->
+    <section style="padding-top: 20px;">
+      <div class="rail-head">
+        <div class="rail-title"><i class="ri-trophy-fill"></i> Latest Cricket Highlights & Matches</div>
+      </div>
+      <div class="cric-grid" id="highlightsGrid"></div>
+    </section>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="index.html" class="bnav-item"><i class="ri-home-5-line"></i><span>Home</span></a>
+    <a href="cricket.html" class="bnav-item active"><i class="ri-trophy-fill"></i><span>Cricket</span></a>
+    <a href="search.html" class="bnav-item"><i class="ri-search-2-line"></i><span>Search</span></a>
+    <a href="downloads.html" class="bnav-item"><i class="ri-download-2-line"></i><span>Downloads</span></a>
+  </nav>
+
+  <script src="config.js?v=5"></script>
+  <script>
+    let activeUrl = CRICKET_CONFIG.liveChannels[0].embedUrl;
+    let shieldOn = true;
+
+    function renderChannels() {
+      document.getElementById("cricChannelsRow").innerHTML = CRICKET_CONFIG.liveChannels.map((ch, i) => `
+        <button class="c-pill ${ch.embedUrl === activeUrl ? "active" : ""}" onclick="playLive('${ch.embedUrl}')">
+          <span class="live-dot"></span> ${ch.name}
+        </button>
+      `).join("");
+    }
+
+    function playLive(url) {
+      activeUrl = url;
+      renderChannels();
+      const sb = shieldOn ? `sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"` : "";
+      document.getElementById("cricPlayer").innerHTML = `<iframe src="${url}" ${sb} allowfullscreen allow="autoplay; fullscreen; encrypted-media"></iframe>`;
+    }
+
+    function playHighlight(ytId) {
+      document.getElementById("cricPlayer").innerHTML = `<iframe src="https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0" allowfullscreen allow="autoplay; fullscreen"></iframe>`;
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function toggleCricShield() {
+      shieldOn = !shieldOn;
+      const btn = document.getElementById("cricShieldBtn");
+      btn.classList.toggle("blue-active", shieldOn);
+      btn.innerHTML = shieldOn ? `<i class="ri-shield-check-fill"></i> Ad-Block Shield: ON` : `<i class="ri-shield-line"></i> Ad-Block Shield: OFF`;
+      playLive(activeUrl);
+    }
+
+    document.getElementById("highlightsGrid").innerHTML = CRICKET_CONFIG.highlights.map(h => `
+      <div class="cric-card" onclick="playHighlight('${h.ytId}')">
+        <span class="cric-badge"><i class="ri-play-circle-fill"></i> ${h.badge}</span>
+        <div style="font-size:14px;font-weight:800;">${esc(h.title)}</div>
+      </div>
+    `).join("");
+
+    playLive(activeUrl);
+  </script>
+</body>
+</html>

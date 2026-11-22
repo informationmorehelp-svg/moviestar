@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Search & Explore — Movie Star Pro</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=4" />
+</head>
+<body>
+
+  <!-- Top Navigation -->
+  <header class="topbar">
+    <a href="index.html" class="brand">MOVIE STAR <span class="brand-pill">PRO</span></a>
+    <nav class="desk-nav">
+      <a href="index.html">Home</a>
+      <a href="search.html" class="active">Search & Explore</a>
+      <a href="search.html?cat=upcoming">Upcoming</a>
+      <a href="search.html?cat=hindi_series">Series</a>
+      <a href="search.html?cat=hindi_adult">18+ Hindi</a>
+    </nav>
+    <div class="top-actions">
+      <a href="index.html" class="nav-pill"><i class="ri-home-5-line"></i> Home</a>
+      <a href="downloads.html" class="nav-pill"><i class="ri-download-2-line"></i> Downloads</a>
+    </div>
+  </header>
+
+  <!-- Sticky Search Bar & Filters -->
+  <div class="search-hero">
+    <div class="search-input-wrap">
+      <i class="ri-search-2-line" style="font-size:18px;color:#94a3b8;padding-left:4px;"></i>
+      <input type="text" id="fullSearchInput" placeholder="Search Hindi movies, 18+ bold, sci-fi, crime, music, TV..." autocomplete="off" />
+      <button class="icon-btn" id="clearSearchBtn" style="display:none;" onclick="clearSearch()"><i class="ri-close-line"></i></button>
+      <button class="icon-btn" id="voiceBtn" onclick="startVoiceSearch()" title="Voice Search"><i class="ri-mic-line"></i></button>
+    </div>
+
+    <div class="search-filters">
+      <select class="f-select" id="fType" onchange="runFilteredExplore()">
+        <option value="movie">Movies</option>
+        <option value="tv">TV Shows / Series</option>
+      </select>
+      <select class="f-select" id="fLang" onchange="runFilteredExplore()">
+        <option value="">All Languages</option>
+        <option value="hi" selected>Hindi (Priority)</option>
+        <option value="en">English</option>
+        <option value="te">Telugu</option>
+        <option value="ta">Tamil</option>
+        <option value="ko">Korean</option>
+      </select>
+      <select class="f-select" id="fGenre" onchange="runFilteredExplore()">
+        <option value="">All Genres</option>
+        <option value="adult_18">18+ Adult / Erotic</option>
+        <option value="10749">Romantic</option>
+        <option value="18">Drama</option>
+        <option value="878">Science Fiction</option>
+        <option value="80">Crime</option>
+        <option value="10402">Music</option>
+        <option value="16">Cartoon / Anime</option>
+        <option value="28">Action</option>
+        <option value="35">Comedy</option>
+        <option value="27">Horror</option>
+        <option value="99">Documentary</option>
+      </select>
+      <select class="f-select" id="fYear" onchange="runFilteredExplore()">
+        <option value="">Any Year</option>
+        <option value="2026">2026</option>
+        <option value="2025">2025</option>
+        <option value="2024">2024</option>
+        <option value="2023">2023</option>
+        <option value="2022">2022</option>
+      </select>
+      <select class="f-select" id="fSort" onchange="runFilteredExplore()">
+        <option value="popularity.desc">Most Popular</option>
+        <option value="vote_average.desc">Top Rated</option>
+        <option value="primary_release_date.desc">Latest First</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="page-wrap" style="padding-top:16px;">
+    <section id="exploreTilesSection">
+      <div class="rail-head">
+        <div class="rail-title"><i class="ri-apps-2-fill"></i> All Categories & Genres</div>
+      </div>
+      <div class="cat-tiles" id="catTilesGrid"></div>
+    </section>
+
+    <div class="rail-head">
+      <div class="rail-title" id="resultsHeading"><i class="ri-fire-fill"></i> Trending Movies & Shows</div>
+    </div>
+
+    <div class="m-grid" id="resultsGrid"></div>
+    <div id="scrollSentinel" class="sentinel-box"><i class="ri-loader-4-line"></i> Loading more...</div>
+  </main>
+
+  <!-- Mobile Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="index.html" class="bnav-item"><i class="ri-home-5-line"></i><span>Home</span></a>
+    <a href="search.html" class="bnav-item active"><i class="ri-search-2-fill"></i><span>Search</span></a>
+    <a href="downloads.html" class="bnav-item"><i class="ri-download-2-line"></i><span>Downloads</span></a>
+    <a href="search.html?cat=upcoming" class="bnav-item"><i class="ri-calendar-event-line"></i><span>Upcoming</span></a>
+    <a href="search.html?cat=hindi_adult" class="bnav-item"><i class="ri-fire-line"></i><span>18+ Bold</span></a>
+  </nav>
+
+  <script src="config.js?v=4"></script>
+  <script>
+    const input = document.getElementById("fullSearchInput");
+    const clearBtn = document.getElementById("clearSearchBtn");
+    const resultsGrid = document.getElementById("resultsGrid");
+    const resultsHeading = document.getElementById("resultsHeading");
+    const sentinel = document.getElementById("scrollSentinel");
+    const exploreTilesSection = document.getElementById("exploreTilesSection");
+
+    let mode = "trending", activeCat = null, queryText = "", page = 1, totalPages = 1, isFetching = false, debounceTimer;
+
+    // Render All Category Tiles
+    document.getElementById("catTilesGrid").innerHTML = CATEGORIES.map(c => `
+      <div class="cat-tile" style="background:${c.color}" onclick="openCategory('${c.id}')">
+        <span>${c.badge}</span>
+        <h3><i class="${c.icon}"></i> ${c.title}</h3>
+      </div>
+    `).join("");
+
+    async function loadResults(append = false) {
+      if (isFetching) return;
+      isFetching = true;
+      if (!append) {
+        resultsGrid.innerHTML = "";
+        sentinel.style.display = "block";
+        sentinel.innerHTML = `<i class="ri-loader-4-line"></i> Loading...`;
+      }
+
+      try {
+        let items = [], fallbackType = "movie", isAdult = false;
+
+        if (mode === "search") {
+          const d = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${CONFIG.API_KEY}&include_adult=true&query=${encodeURIComponent(queryText)}&page=${page}`).then(r => r.json());
+          items = (d.results || []).filter(i => i.media_type !== "person");
+          totalPages = d.total_pages || 1;
+        } else if (mode === "category" && activeCat) {
+          const out = await fetchCategoryItems(activeCat, page);
+          items = out.results;
+          totalPages = out.total_pages;
+          fallbackType = activeCat.type;
+          isAdult = !!activeCat.adult;
+        } else if (mode === "filter") {
+          const t = document.getElementById("fType").value;
+          const l = document.getElementById("fLang").value;
+          const g = document.getElementById("fGenre").value;
+          const y = document.getElementById("fYear").value;
+          const s = document.getElementById("fSort").value;
+          fallbackType = t;
+
+          let url = `https://api.themoviedb.org/3/discover/${t}?api_key=${CONFIG.API_KEY}&include_adult=true&sort_by=${s}&page=${page}`;
+          if (l) url += `&with_original_language=${l}`;
+          if (y) url += t === "tv" ? `&first_air_date_year=${y}` : `&primary_release_year=${y}`;
+          if (g === "adult_18") {
+            isAdult = true;
+            url += `&with_keywords=190370|155477|159551|293198`;
+          } else if (g) {
+            url += `&with_genres=${g}`;
+          }
+
+          const d = await fetch(url).then(r => r.json());
+          items = d.results || [];
+          totalPages = d.total_pages || 1;
+        } else {
+          const d = await fetch(`https://api.themoviedb.org/3/trending/all/week?api_key=${CONFIG.API_KEY}&page=${page}`).then(r => r.json());
+          items = (d.results || []).filter(i => i.media_type !== "person");
+          totalPages = d.total_pages || 1;
+        }
+
+        if (!append && items.length === 0) {
+          sentinel.textContent = "Koi result nahi mila.";
+          isFetching = false;
+          return;
+        }
+
+        const html = items.map(it => makeCardHTML(it, fallbackType, isAdult)).join("");
+        if (append) resultsGrid.insertAdjacentHTML("beforeend", html);
+        else resultsGrid.innerHTML = html;
+
+        sentinel.style.display = page < totalPages ? "block" : "none";
+      } catch (e) {
+        sentinel.textContent = "Error loading results.";
+      }
+      isFetching = false;
+    }
+
+    // Infinite Scroll Auto-Load
+    new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !isFetching && page < totalPages) {
+        page++;
+        loadResults(true);
+      }
+    }, { rootMargin: "300px" }).observe(sentinel);
+
+    function openCategory(catId) {
+      activeCat = CATEGORIES.find(c => c.id === catId);
+      if (!activeCat) return;
+      mode = "category";
+      page = 1;
+      input.value = "";
+      clearBtn.style.display = "none";
+      exploreTilesSection.style.display = "none";
+      resultsHeading.innerHTML = `<i class="${activeCat.icon}"></i> ${activeCat.title}`;
+      loadResults(false);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function runFilteredExplore() {
+      mode = "filter";
+      page = 1;
+      input.value = "";
+      clearBtn.style.display = "none";
+      exploreTilesSection.style.display = "none";
+      resultsHeading.innerHTML = `<i class="ri-filter-3-fill"></i> Filtered Results`;
+      loadResults(false);
+    }
+
+    function clearSearch() {
+      input.value = "";
+      clearBtn.style.display = "none";
+      queryText = "";
+      mode = "trending";
+      page = 1;
+      exploreTilesSection.style.display = "block";
+      resultsHeading.innerHTML = `<i class="ri-fire-fill"></i> Trending Movies & Shows`;
+      loadResults(false);
+    }
+
+    input.addEventListener("input", () => {
+      const val = input.value.trim();
+      clearBtn.style.display = val ? "flex" : "none";
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (val.length >= 2) {
+          queryText = val;
+          mode = "search";
+          page = 1;
+          exploreTilesSection.style.display = "none";
+          resultsHeading.innerHTML = `<i class="ri-search-line"></i> Results for "${esc(val)}"`;
+          loadResults(false);
+        } else if (!val) {
+          clearSearch();
+        }
+      }, 320);
+    });
+
+    function startVoiceSearch() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { alert("Voice search is browser mein supported nahi hai."); return; }
+      const btn = document.getElementById("voiceBtn");
+      const rec = new SR();
+      rec.lang = "hi-IN";
+      btn.classList.add("listening");
+      rec.onresult = e => {
+        input.value = e.results[0][0].transcript;
+        input.dispatchEvent(new Event("input"));
+      };
+      rec.onend = () => btn.classList.remove("listening");
+      rec.start();
+    }
+
+    const initCat = new URLSearchParams(location.search).get("cat");
+    if (initCat) openCategory(initCat);
+    else loadResults(false);
+  </script>
+</body>
+</html>
